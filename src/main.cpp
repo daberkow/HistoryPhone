@@ -18,6 +18,9 @@
 #include "SD.h"
 #include "FS.h"
 
+// WIFI
+#include <WiFi.h>
+
 const int BUFFER_SIZE = 1024;
 // Digital I/O used
 #define SD_CS          4
@@ -35,6 +38,23 @@ const int BUFFER_SIZE = 1024;
 // #define I2S_BCLK      27
 // #define I2S_LRC       26
 
+#include "ESPAsyncWebServer.h"
+// Wifi vars
+String ssid;
+String pass;
+String ip;
+String gateway;
+IPAddress localIP;
+// IPAddress localIP(192, 168, 1, 200); // hardcoded
+// Set your Gateway IP address
+IPAddress localGateway;
+// IPAddress localGateway(192, 168, 1, 1); //hardcoded
+IPAddress subnet(255, 255, 0, 0);
+// Timer variables
+unsigned long previousMillis = 0;
+const long interval = 10000;  // interval to wait for Wi-Fi connection (milliseconds)
+// Create AsyncWebServer object on port 80
+AsyncWebServer server(80);
 
 // https://registry.platformio.org/libraries/esphome/ESP32-audioI2S
 Audio audio;
@@ -80,6 +100,39 @@ void writeFile(fs::FS &fs, const char * path, const char * message){
   }
 }
 
+// Initialize WiFi
+bool initWiFi() {
+  if(ssid=="" || ip==""){
+    Serial.println("Undefined SSID or IP address.");
+    return false;
+  }
+
+  WiFi.mode(WIFI_AP);
+  localIP.fromString(ip.c_str());
+  localGateway.fromString(gateway.c_str());
+
+  WiFi.softAP(ssid, pass);
+
+  IPAddress IP = WiFi.softAPIP();
+  Serial.print("AP IP address: ");
+  Serial.println(IP);
+  return true;
+}
+
+// Replaces placeholder with LED state value
+String processor(const String& var) {
+  // if(var == "STATE") {
+  //   if(digitalRead(ledPin)) {
+  //     ledState = "ON";
+  //   }
+  //   else {
+  //     ledState = "OFF";
+  //   }
+  //   return ledState;
+  // }
+  return String();
+}
+
 void setup() {
   Serial.begin(115200);
   Serial.println("Starting Init");
@@ -118,8 +171,40 @@ void setup() {
 
   audio.setPinout(I2S_BCLK, I2S_LRC, I2S_DOUT);
   // audio.setTone(-40, -40, -40);
-  audio.setVolume(6); // 0...21
+  audio.setVolume(10); // 0...21
   audio.connecttoFS(SD, "/all.mp3");
+
+  // Init Wifi
+  // Load values saved in SPIFFS
+  ssid = "DanTest";
+  pass = "";
+  ip = "172.168.0.1";
+  gateway = "";
+  Serial.println(ssid);
+  Serial.println(pass);
+  Serial.println(ip);
+  Serial.println(gateway);
+
+  if(initWiFi()) {
+    // Route for root / web page
+    server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
+      request->send(SD, "/index.html", "text/html", false, processor);
+    });
+    server.serveStatic("/", SD, "/");
+
+    // // Route to set GPIO state to HIGH
+    // server.on("/on", HTTP_GET, [](AsyncWebServerRequest *request) {
+    //   // digitalWrite(ledPin, HIGH);
+    //   request->send(SD, "/index.html", "text/html", false, processor);
+    // });
+
+    // // Route to set GPIO state to LOW
+    // server.on("/off", HTTP_GET, [](AsyncWebServerRequest *request) {
+    //   // digitalWrite(ledPin, LOW);
+    //   request->send(SD, "/index.html", "text/html", false, processor);
+    // });
+    server.begin();
+  }
 }
 
 void loop() {
