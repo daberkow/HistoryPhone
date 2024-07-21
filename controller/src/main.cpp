@@ -15,7 +15,8 @@
 
 // #include "Arduino.h"
 #include "Audio.h"
-#include "SD.h"
+#include "SD_MMC.h"
+// #include "SD.h"
 #include "FS.h"
 
 // WIFI
@@ -23,15 +24,14 @@
 
 const int BUFFER_SIZE = 1024;
 // Digital I/O used
-#define SD_CS          4
-#define SPI_MOSI      23
-#define SPI_MISO      19
-#define SPI_SCK       18
+#define SD_MMC_CMD 15 //Please do not modify it.
+#define SD_MMC_CLK 14 //Please do not modify it.
+#define SD_MMC_D0  2  //Please do not modify it.
 
 //External Dac
-#define I2S_DOUT      0
-#define I2S_BCLK      2
-#define I2S_LRC       15
+#define I2S_DOUT      34
+#define I2S_BCLK      33
+#define I2S_LRC       32
 
 // Built In Dac
 // #define I2S_DOUT      25
@@ -133,19 +133,51 @@ String processor(const String& var) {
   return String();
 }
 
+void listDir(fs::FS &fs, const char * dirname, uint8_t levels){
+    Serial.printf("Listing directory: %s\n", dirname);
+
+    File root = fs.open(dirname);
+    if(!root){
+        Serial.println("Failed to open directory");
+        return;
+    }
+    if(!root.isDirectory()){
+        Serial.println("Not a directory");
+        return;
+    }
+
+    File file = root.openNextFile();
+    while(file){
+        if(file.isDirectory()){
+            Serial.print("  DIR : ");
+            Serial.println(file.name());
+            if(levels){
+                listDir(fs, file.path(), levels -1);
+            }
+        } else {
+            Serial.print("  FILE: ");
+            Serial.print(file.name());
+            Serial.print("  SIZE: ");
+            Serial.println(file.size());
+        }
+        file = root.openNextFile();
+    }
+}
+
 void setup() {
   Serial.begin(115200);
   Serial.println("Starting Init");
-  SPI.begin(SPI_SCK, SPI_MISO, SPI_MOSI);
+  SD_MMC.setPins(SD_MMC_CLK, SD_MMC_CMD, SD_MMC_D0);
+  // SPI.begin(SPI_SCK, SPI_MISO, SPI_MOSI);
   // https://randomnerdtutorials.com/getting-started-freenove-esp32-wrover-cam/
   // https://github.com/Freenove/Freenove_ESP32_WROVER_Board/blob/main/Datasheet/ESP32-Pinout.pdf
 
   // Init SD card
   // https://randomnerdtutorials.com/esp32-microsd-card-arduino/
-  if(!SD.begin(SD_CS)){
+  if(!SD_MMC.begin("/sdcard", true, true, SDMMC_FREQ_DEFAULT, 5)){
     Serial.println("Card Mount Failed");
   }
-  uint8_t cardType = SD.cardType();
+  uint8_t cardType = SD_MMC.cardType();
 
   if(cardType == CARD_NONE){
     Serial.println("No SD card attached");
@@ -166,13 +198,15 @@ void setup() {
   Serial.printf("SD Card Size: %lluMB\n", cardSize);
 
   // listDir(SD, "/", 0);
-  Serial.printf("Total space: %lluMB\n", SD.totalBytes() / (1024 * 1024));
-  Serial.printf("Used space: %lluMB\n", SD.usedBytes() / (1024 * 1024));
+  Serial.printf("Total space: %lluMB\n", SD_MMC.cardSize() / (1024 * 1024));
+  Serial.printf("Used space: %lluMB\n", SD_MMC.usedBytes() / (1024 * 1024));
+
+  listDir(SD_MMC, "/", 0);
 
   audio.setPinout(I2S_BCLK, I2S_LRC, I2S_DOUT);
   // audio.setTone(-40, -40, -40);
   audio.setVolume(10); // 0...21
-  audio.connecttoFS(SD, "/all.mp3");
+  audio.connecttoFS(SD_MMC, "/all.mp3");
 
   // Init Wifi
   // Load values saved in SPIFFS
