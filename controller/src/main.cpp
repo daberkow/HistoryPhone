@@ -23,20 +23,24 @@
 #include <WiFi.h>
 
 const int BUFFER_SIZE = 1024;
+
+// **** IO Pins ****
 // Digital I/O used
 #define SD_MMC_CMD 15 //Please do not modify it.
 #define SD_MMC_CLK 14 //Please do not modify it.
 #define SD_MMC_D0  2  //Please do not modify it.
 
 //External Dac
-#define I2S_DOUT      34
-#define I2S_BCLK      33
-#define I2S_LRC       32
+#define I2S_DOUT      25
+#define I2S_BCLK      26
+#define I2S_LRC       33
 
-// Built In Dac
-// #define I2S_DOUT      25
-// #define I2S_BCLK      27
-// #define I2S_LRC       26
+// IO
+#define DIAL_1 21
+#define DIAL_2 19
+#define HOOK_SWITCH 27
+
+// **** IO Pins ****
 
 #include "ESPAsyncWebServer.h"
 // Wifi vars
@@ -167,6 +171,9 @@ void listDir(fs::FS &fs, const char * dirname, uint8_t levels){
 void setup() {
   Serial.begin(115200);
   Serial.println("Starting Init");
+
+  pinMode(HOOK_SWITCH, INPUT_PULLUP);
+
   SD_MMC.setPins(SD_MMC_CLK, SD_MMC_CMD, SD_MMC_D0);
   // SPI.begin(SPI_SCK, SPI_MISO, SPI_MOSI);
   // https://randomnerdtutorials.com/getting-started-freenove-esp32-wrover-cam/
@@ -204,9 +211,11 @@ void setup() {
   listDir(SD_MMC, "/", 0);
 
   audio.setPinout(I2S_BCLK, I2S_LRC, I2S_DOUT);
+  // audio.setBalance(0); // -100...100
   // audio.setTone(-40, -40, -40);
-  audio.setVolume(10); // 0...21
-  audio.connecttoFS(SD_MMC, "/all.mp3");
+  audio.setVolume(14); // 0...21
+  audio.forceMono(true);
+  // audio.connecttoFS(SD_MMC, "/all.mp3");
 
   // Init Wifi
   // Load values saved in SPIFFS
@@ -241,39 +250,57 @@ void setup() {
   }
 }
 
+
+boolean onHook = true;
+
 void loop() {
+  int state = digitalRead(HOOK_SWITCH);
+
+  if (onHook && state == LOW) {
+    Serial.println("Off Hook");
+    onHook = false;
+    audio.connecttoFS(SD_MMC, "/tone.mp3");
+  } else if (!onHook && state != LOW) {
+    Serial.println("On Hook");
+    onHook = true;
+    audio.stopSong();
+  }
+
+  if (!onHook && !audio.isRunning()) {
+    audio.connecttoFS(SD_MMC, "/tone.mp3");
+  }
   audio.loop();
 }
 
 
 // optional
-void audio_info(const char *info){
-    Serial.print("info        "); Serial.println(info);
-}
-void audio_id3data(const char *info){  //id3 metadata
-    Serial.print("id3data     ");Serial.println(info);
-}
-void audio_eof_mp3(const char *info){  //end of file
-    Serial.print("eof_mp3     ");Serial.println(info);
-}
-void audio_showstation(const char *info){
-    Serial.print("station     ");Serial.println(info);
-}
-void audio_showstreamtitle(const char *info){
-    Serial.print("streamtitle ");Serial.println(info);
-}
-void audio_bitrate(const char *info){
-    Serial.print("bitrate     ");Serial.println(info);
-}
-void audio_commercial(const char *info){  //duration in sec
-    Serial.print("commercial  ");Serial.println(info);
-}
-void audio_icyurl(const char *info){  //homepage
-    Serial.print("icyurl      ");Serial.println(info);
-}
-void audio_lasthost(const char *info){  //stream URL played
-    Serial.print("lasthost    ");Serial.println(info);
-}
-void audio_eof_speech(const char *info){
-    Serial.print("eof_speech  ");Serial.println(info);
-}
+// void audio_info(const char *info){
+//     Serial.print("info        "); Serial.println(info);
+// }
+// void audio_id3data(const char *info){  //id3 metadata
+//     Serial.print("id3data     ");Serial.println(info);
+// }
+// void audio_eof_mp3(const char *info){  //end of file
+//     Serial.print("eof_mp3     ");Serial.println(info);
+// }
+// void audio_showstation(const char *info){
+//     Serial.print("station     ");Serial.println(info);
+// }
+// void audio_showstreamtitle(const char *info){
+//     Serial.print("streamtitle ");Serial.println(info);
+// }
+// void audio_bitrate(const char *info){
+//     Serial.print("bitrate     ");Serial.println(info);
+// }
+// void audio_commercial(const char *info){  //duration in sec
+//     Serial.print("commercial  ");Serial.println(info);
+// }
+// void audio_icyurl(const char *info){  //homepage
+//     Serial.print("icyurl      ");Serial.println(info);
+// }
+// void audio_lasthost(const char *info){  //stream URL played
+//     Serial.print("lasthost    ");Serial.println(info);
+// }
+// void audio_eof_speech(const char *info){
+//     Serial.print("eof_speech  ");Serial.println(info);
+// }
