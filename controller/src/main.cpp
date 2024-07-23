@@ -19,6 +19,8 @@
 // #include "SD.h"
 #include "FS.h"
 
+#include "Dialer.h"
+
 // WIFI
 #include <WiFi.h>
 
@@ -37,7 +39,7 @@ const int BUFFER_SIZE = 1024;
 
 // IO
 #define DIAL_1 21
-#define DIAL_2 19
+#define DIAL_2_In_MOTION 19
 #define HOOK_SWITCH 27
 
 // **** IO Pins ****
@@ -172,6 +174,8 @@ void setup() {
   Serial.begin(115200);
   Serial.println("Starting Init");
 
+  pinMode(DIAL_1, INPUT_PULLUP);
+  pinMode(DIAL_2_In_MOTION, INPUT_PULLUP);
   pinMode(HOOK_SWITCH, INPUT_PULLUP);
 
   SD_MMC.setPins(SD_MMC_CLK, SD_MMC_CMD, SD_MMC_D0);
@@ -250,26 +254,31 @@ void setup() {
   }
 }
 
-
-boolean onHook = true;
+Dialer dialer(HOOK_SWITCH, DIAL_1, DIAL_2_In_MOTION);
 
 void loop() {
-  int state = digitalRead(HOOK_SWITCH);
+  // int state = digitalRead(HOOK_SWITCH);
 
-  if (onHook && state == LOW) {
-    Serial.println("Off Hook");
-    onHook = false;
-    audio.connecttoFS(SD_MMC, "/tone.mp3");
-  } else if (!onHook && state != LOW) {
-    Serial.println("On Hook");
-    onHook = true;
-    audio.stopSong();
-  }
+  // if (onHook && state == LOW) {
+  //   Serial.println("Off Hook");
+  //   onHook = false;
+  //   audio.connecttoFS(SD_MMC, "/tone.mp3");
+  // } else if (!onHook && state != LOW) {
+  //   Serial.println("On Hook");
+  //   onHook = true;
+  //   audio.stopSong();
+  // }
 
-  if (!onHook && !audio.isRunning()) {
-    audio.connecttoFS(SD_MMC, "/tone.mp3");
+  // if (!onHook && !audio.isRunning()) {
+  //   audio.connecttoFS(SD_MMC, "/tone.mp3");
+  // }
+  // audio.loop();
+
+  dialer.loop();
+  if (dialer.getFinalPulseCount() > 0) {
+    Serial.println("External Pulse Count: " + String(dialer.getFinalPulseCount()));
+    dialer.clearFinalPulseCount();
   }
-  audio.loop();
 }
 
 
