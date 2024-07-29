@@ -4,6 +4,9 @@ Dialer::Dialer(int hookSwitchPin, int dial1Pin, int dial2InMotionPin)
     : hookSwitchPin(hookSwitchPin), dial1Pin(dial1Pin), dial2InMotionPin(dial2InMotionPin),
       onHook(true), pulseCount(0), wasInMotion(false), lastReadOpen(false), finalPulseCount(0), lastReadTime(0) {}
 
+/**
+ * This function is called in the main loop of the program.
+ */
 void Dialer::loop() {
     // this is reading too fast, I want to add a 10ms delay that doesnt block the rest of the system, just skips if its been less than 10ms
     if (millis() - lastReadTime < 10) {
@@ -20,7 +23,6 @@ void Dialer::loop() {
         wasInMotion = true;
     } else {
         if (!inMotion && wasInMotion) {
-            // Serial.println("Pulse Count: " + String(pulseCount));
             finalPulseCount = pulseCount;
             wasInMotion = false;
         }
@@ -36,12 +38,16 @@ void Dialer::loop() {
     }
 }
 
+/**
+ * This function returns the final pulse count.
+ */
 int Dialer::getFinalPulseCount() {
-    // int tempPulse = finalPulseCount;
-    // finalPulseCount = 0;
     return finalPulseCount;
 }
 
+/**
+ * This function clears the final pulse count.
+ */
 void Dialer::clearFinalPulseCount() {
     finalPulseCount = 0;
 }
