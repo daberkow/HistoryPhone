@@ -5,13 +5,12 @@
 
 class Dialer {
 public:
-    Dialer(int hookSwitchPin, int dial1Pin, int dial2InMotionPin);
+    Dialer(int dial1Pin, int dial2InMotionPin);
     void loop();
     int getFinalPulseCount();
     void clearFinalPulseCount();
 
 private:
-    int hookSwitchPin;
     int dial1Pin;
     int dial2InMotionPin;
     boolean onHook;

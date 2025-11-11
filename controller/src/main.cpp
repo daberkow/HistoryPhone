@@ -34,9 +34,15 @@ const int BUFFER_SIZE = 1024;
 #define I2S_LRC       33
 
 // IO
-#define DIAL_1 21
-#define DIAL_2_In_MOTION 19
-#define HOOK_SWITCH 27
+#include "Mux.h"
+using namespace admux;
+
+Mux mux(Pin(13, OUTPUT, PinType::Digital), Pinset(32, 12, 27));
+Mux inputsMux(Pin(35, INPUT, PinType::Digital), Pinset(5, 4, 0));
+
+#define DIAL_1 19
+#define DIAL_2_In_MOTION 21
+// #define HOOK_SWITCH 21 // Hook switch moved to input mux channel 7
 // **** IO Pins ****
 
 
@@ -58,9 +64,9 @@ AsyncWebServer server(80);
 // https://registry.platformio.org/libraries/esphome/ESP32-audioI2S
 Audio audio;
 
-Dialer dialer(HOOK_SWITCH, DIAL_1, DIAL_2_In_MOTION);
+Dialer dialer(DIAL_1, DIAL_2_In_MOTION);
 
-int number = 0;
+int dialedNumber = 0;
 bool onHook = true;
 bool busy = false;
 bool playing = false;
@@ -231,9 +237,16 @@ String selectRandomAudioFile() {
 
 void setup() {
     Serial.begin(115200);
+    Serial.println("History Phone Starting...");
+
+    // Mux
+    pinMode(32, OUTPUT);
+    pinMode(12, OUTPUT);
+    pinMode(27, OUTPUT);
+    pinMode(13, OUTPUT);
     pinMode(DIAL_1, INPUT_PULLUP);
     pinMode(DIAL_2_In_MOTION, INPUT_PULLUP);
-    pinMode(HOOK_SWITCH, INPUT_PULLUP);
+    // pinMode(HOOK_SWITCH, INPUT_PULLUP);
     SD_MMC.setPins(SD_MMC_CLK, SD_MMC_CMD, SD_MMC_D0);
 
     // https://randomnerdtutorials.com/getting-started-freenove-esp32-wrover-cam/
@@ -275,12 +288,17 @@ void setup() {
     // gateway = "";
     Serial.println("SSID: " + ssid);
     Serial.println("Password: " + pass);
-    // Serial.println(ip);
-    // Serial.println(gateway);
+    Serial.println(ip);
+    Serial.println(gateway);
 
     if (initWiFi()) {
         server.on("/api/current", HTTP_GET, [](AsyncWebServerRequest *request) {
-            request->send(200, "text/plain", String(number));
+            request->send(200, "text/plain", String(dialedNumber));
+        });
+
+        server.on("/api/years", HTTP_GET, [](AsyncWebServerRequest *request) {
+            String yearsJson = getYearsInJson();
+            request->send(200, "application/json", yearsJson);
         });
 
         // Route for root / web page
@@ -294,6 +312,18 @@ void setup() {
             Serial.println("Error starting mDNS");
         }
     }
+}
+
+String getYearsInJson() {
+    String returnData = "{\"years\":[";
+    for (int i = 0; i < content.size(); i++) {
+        returnData += String(content[i]);
+        if (i < content.size() - 1) {
+            returnData += ",";
+        }
+    }
+    returnData += "]}";
+    return returnData;
 }
 
 /**
@@ -319,77 +349,126 @@ int findClosestFolder (int num) {
     return closest;
 }
 
-void loop() {
-    int hookState = digitalRead(HOOK_SWITCH);
+// Hook switch debouncing state
+boolean hookReadings[5] = {false, false, false, false, false};
+int readingIndex = 0;
+boolean readingsReady = false;
 
+void loop() {
+    // Take one reading per loop iteration to avoid blocking
+    inputsMux.channel(7); // Hook switch on channel 7
+    hookReadings[readingIndex] = inputsMux.read();
+    readingIndex++;
+
+    // Once we have 5 readings, calculate the average
+    if (readingIndex >= 5) {
+        readingIndex = 0;
+        readingsReady = true;
+    }
+
+    // Determine hook state from averaged readings
+    int hookState = -1; // -1 means "not ready yet"
+    if (readingsReady) {
+        int total = 0;
+        for (int i = 0; i < 5; i++) {
+            total += hookReadings[i];
+        }
+        float average = total / 5.0;
+        // Serial.println("Hook Switch Avg: " + String(average));
+        hookState = (average > 0.5) ? HIGH : LOW; // Threshold at midpoint
+        hookState = !hookState; // Invert if needed based on your hardware
+    }
+
+    delay(3);
+    // Serial.println("Hook State: " + String(hookState));
+
+    // If readings aren't ready yet, just run audio loop and return
+    if (hookState == -1) {
+        audio.loop();
+        return;
+    }
+
+    // Handle off-hook transition (handset picked up)
     if (onHook && hookState == LOW) {
         Serial.println("Off Hook");
-        // Set states when first taken off hook
+        mux.channel(2);
+        mux.write(1);
         onHook = false;
         busy = false;
         playing = false;
         folderContent.clear();
-
-        // Start playing tone, and blank counters
-        audio.connecttoFS(SD_MMC, "/content/tone.mp3");
-        number = 0;
+        // audio.connecttoFS(SD_MMC, "/content/tone.mp3");
+        dialedNumber = 0;
         dialer.clearFinalPulseCount();
         lastReadTime = millis();
-    } else if (!onHook && hookState != LOW) {
+    }
+    // Handle on-hook transition (handset hung up)
+    else if (!onHook && hookState != LOW) {
         Serial.println("On Hook");
+        mux.channel(2);
+        mux.write(0);
         onHook = true;
         busy = false;
         playing = false;
-        number = 0;
+        dialedNumber = 0;
         audio.stopSong();
     }
 
-    // We are off the hook, but not done playing busy signal
+    // Off-hook state: handle dialing and tone
     if (!onHook && !busy && !playing) {
-        // Currently off hook, do things related to that
+        // Keep dial tone playing
         if (!audio.isRunning()) {
             audio.connecttoFS(SD_MMC, "/content/tone.mp3");
         }
+
+        // Check for dial pulses
         dialer.loop();
         if (dialer.getFinalPulseCount() > 0) {
             Serial.println("Dial Reading: " + String(dialer.getFinalPulseCount()));
-            number = (number * 10) + dialer.getFinalPulseCount();
+            dialedNumber = (dialedNumber * 10) + dialer.getFinalPulseCount();
             dialer.clearFinalPulseCount();
             lastReadTime = millis();
-            if (number > 999) {
-                // We have a 4 digit number, and we have not timed out
-                // PLAY AUDIO CLIP!
-                int closest = findClosestFolder(number);
+
+            // Check if we have a complete 4-digit number
+            if (dialedNumber > 999) {
+                int closest = findClosestFolder(dialedNumber);
                 Serial.println("Closest: " + String(closest));
+
                 if (closest != -1) {
+                    // Valid number - play audio content
                     playing = true;
                     indexPlayingContentsMetadata(SD_MMC, closest);
                     String randomFile = selectRandomAudioFile();
-                    String filePathString = ("/content/" + String(closest) + "/" + randomFile);
-                    const char *filePath = filePathString.c_str();
+                    String filePathString = "/content/" + String(closest) + "/" + randomFile;
                     Serial.println("Playing: " + filePathString);
-                    audio.connecttoFS(SD_MMC, filePath);
+                    audio.connecttoFS(SD_MMC, filePathString.c_str());
                 } else {
+                    // Invalid number - play busy signal
                     busy = true;
                     audio.connecttoFS(SD_MMC, "/content/busy.mp3");
                 }
             }
         } else {
-            if (millis() - lastReadTime > 5000) {
+            // Timeout if no dialing activity for 5 seconds
+            if (millis() - lastReadTime > 7500) {
                 busy = true;
                 audio.connecttoFS(SD_MMC, "/content/busy.mp3");
             }
         }
     }
+
+    // Keep busy signal looping
     if (!onHook && busy && !audio.isRunning()) {
         audio.connecttoFS(SD_MMC, "/content/busy.mp3");
     }
 
+    // After audio clip finishes, play off-hook tone
     if (!onHook && playing && !audio.isRunning()) {
         playing = false;
         busy = true;
         audio.connecttoFS(SD_MMC, "/content/off-hook.mp3");
     }
+
     audio.loop();
 }
 

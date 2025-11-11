@@ -1,7 +1,7 @@
 #include "Dialer.h"
 
-Dialer::Dialer(int hookSwitchPin, int dial1Pin, int dial2InMotionPin)
-    : hookSwitchPin(hookSwitchPin), dial1Pin(dial1Pin), dial2InMotionPin(dial2InMotionPin),
+Dialer::Dialer(int dial1Pin, int dial2InMotionPin)
+    : dial1Pin(dial1Pin), dial2InMotionPin(dial2InMotionPin),
       onHook(true), pulseCount(0), wasInMotion(false), lastReadOpen(false), finalPulseCount(0), lastReadTime(0) {}
 
 /**
