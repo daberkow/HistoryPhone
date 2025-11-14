@@ -1,0 +1,14 @@
+{
+    "folders": [
+        {"year": "1921", "photos": 3, "text_documents": 1, "mp3_files": 3},
+        {"year": "1935", "photos": 0, "text_documents": 0, "mp3_files": 1},
+        {"year": "1941", "photos": 0, "text_documents": 1, "mp3_files": 2},
+        {"year": "1942", "photos": 6, "text_documents": 0, "mp3_files": 1},
+        {"year": "1943", "photos": 0, "text_documents": 0, "mp3_files": 1},
+        {"year": "1954", "photos": 1, "text_documents": 0, "mp3_files": 1},
+        {"year": "1956", "photos": 0, "text_documents": 1, "mp3_files": 1},
+        {"year": "1969", "photos": 0, "text_documents": 0, "mp3_files": 0},
+        {"year": "1989", "photos": 0, "text_documents": 0, "mp3_files": 0},
+        {"year": "2023", "photos": 0, "text_documents": 0, "mp3_files": 0}
+    ]
+}

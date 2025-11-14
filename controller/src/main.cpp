@@ -297,8 +297,25 @@ void setup() {
         });
 
         server.on("/api/years", HTTP_GET, [](AsyncWebServerRequest *request) {
-            String yearsJson = getYearsInJson();
+            String yearsJson = getYearsInJson(SD_MMC);
             request->send(200, "application/json", yearsJson);
+        });
+
+        server.on("/api/update-volume", HTTP_POST, [](AsyncWebServerRequest *request) {
+            if (request->hasParam("volume", true)) { // Check if the POST body contains the "years" parameter
+                AsyncWebParameter* p = request->getParam("volume", true); // Get the parameter
+                String updatedVolume = p->value(); // Extract the value of the "years" parameter
+                Serial.println("Received years data: " + updatedVolume);
+
+                int volumeLevel = updatedVolume.toInt();
+                audio.setVolume(volumeLevel);
+
+                // Respond with a success message
+                request->send(200, "application/json", "{\"status\":\"success\"}");
+            } else {
+                // Respond with an error if the parameter is missing
+                request->send(400, "application/json", "{\"error\":\"Missing 'volume' parameter\"}");
+            }
         });
 
         // Route for root / web page
@@ -314,17 +331,60 @@ void setup() {
     }
 }
 
-String getYearsInJson() {
-    String returnData = "{\"years\":[";
-    for (int i = 0; i < content.size(); i++) {
-        returnData += String(content[i]);
-        if (i < content.size() - 1) {
-            returnData += ",";
+String getYearsInJson(fs::FS &fs) {
+    String returnData = "{\"folders\":[";
+    File root = SD.open("/content/"); // Open the directory
+    bool firstFolder = true;
+
+    while (true) {
+        File folder = root.openNextFile();
+        if (!folder) break; // No more files/folders
+
+        if (folder.isDirectory()) {
+            if (!firstFolder) {
+                returnData += ",";
+            }
+            firstFolder = false;
+
+            String folderName = folder.name();
+            int photoCount = 0, textCount = 0, mp3Count = 0;
+
+            File subFile;
+            while ((subFile = folder.openNextFile())) {
+                String fileName = subFile.name();
+                if (fileName.endsWith(".jpg") || fileName.endsWith(".png")) {
+                    photoCount++;
+                } else if (fileName.endsWith(".txt")) {
+                    textCount++;
+                } else if (fileName.endsWith(".mp3")) {
+                    mp3Count++;
+                }
+                subFile.close();
+            }
+
+            returnData += "{\"year\":\"" + folderName + "\",";
+            returnData += "\"photos\":" + String(photoCount) + ",";
+            returnData += "\"text_documents\":" + String(textCount) + ",";
+            returnData += "\"mp3_files\":" + String(mp3Count) + "}";
         }
+        folder.close();
     }
+
     returnData += "]}";
     return returnData;
 }
+
+// String getYearsInJson() {
+//     String returnData = "{\"years\":[";
+//     for (int i = 0; i < content.size(); i++) {
+//         returnData += String(content[i]);
+//         if (i < content.size() - 1) {
+//             returnData += ",";
+//         }
+//     }
+//     returnData += "]}";
+//     return returnData;
+// }
 
 /**
  * @brief Find the closest folder to the number dialed. We use the index of the

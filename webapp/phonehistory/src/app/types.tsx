@@ -4,3 +4,14 @@ export interface i_events {
     descr: string,
     narrator: number
 }
+
+export interface Folder {
+    year: string;
+    photos: number;
+    text_documents: number;
+    mp3_files: number;
+}
+
+export interface Data {
+    folders: Folder[];
+}

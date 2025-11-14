@@ -1,20 +1,30 @@
 #mainpage {
-    width: 100%;
+    width: calc(100% - 308px);
     height: 100vh;
     display:block;
-    background-color: pink;
+    background-color: white;
+    left: 0px;
+    position: absolute;
 }
 
 #playWindow {
-    width: calc(100% - 300px);
+    width: calc(100%);
     height: calc(100% - 200px);
     display: block;
-    background-color: green;
+    border-style: solid;
+    border-width: 2px;
+    border-color: #38405F;
+    margin: 4px;
+    border-radius: 4px;
 }
 
 #thumbnails {
-    height: 200px;
-    width: 100%;
+    height: calc(200px - 12px);
+    width: calc(100%);
     display: block;
-    background-color: red;
+    border-style: solid;
+    border-width: 2px;
+    border-color: #38405F;
+    margin: 4px;
+    border-radius: 4px;
 }
