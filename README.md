@@ -49,3 +49,10 @@ So much...
 - Someway to record on device?
 - Buttons and lights if phone has them?
 - More of a standard for metadata
+
+## Attribution
+
+Icons from:
+<a href="https://www.flaticon.com/free-icons/mp3" title="mp3 icons">Mp3 icons created by Freepik - Flaticon</a>
+<a href="https://www.flaticon.com/free-icons/art" title="art icons">Art icons created by Kiranshastry - Flaticon</a>
+<a href="https://www.flaticon.com/free-icons/document" title="document icons">Document icons created by Icongeek26 - Flaticon</a>

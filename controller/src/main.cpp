@@ -63,6 +63,7 @@ AsyncWebServer server(80);
 
 // https://registry.platformio.org/libraries/esphome/ESP32-audioI2S
 Audio audio;
+String filename = "";
 
 Dialer dialer(DIAL_1, DIAL_2_In_MOTION);
 
@@ -235,6 +236,70 @@ String selectRandomAudioFile() {
     return "";
 }
 
+
+String getYearsInJson(fs::FS &fs) {
+    String returnData = "{\"folders\":[";
+    File root = fs.open("/content"); // Open the directory
+    bool firstFolder = true;
+
+    while (true) {
+        File folder = root.openNextFile();
+        if (!folder) break; // No more files/folders
+
+        if (folder.isDirectory()) {
+            if (!firstFolder) {
+                returnData += ",";
+            }
+            firstFolder = false;
+
+            String folderName = folder.name();
+            int photoCount = 0, textCount = 0, mp3Count = 0;
+
+            File subFile;
+            while ((subFile = folder.openNextFile())) {
+                String fileName = subFile.name();
+                if (fileName.endsWith(".jpg") || fileName.endsWith(".png")) {
+                    photoCount++;
+                } else if (fileName.endsWith(".txt")) {
+                    textCount++;
+                } else if (fileName.endsWith(".mp3")) {
+                    mp3Count++;
+                }
+                subFile.close();
+            }
+
+            returnData += "{\"year\":\"" + folderName + "\",";
+            returnData += "\"photos\":" + String(photoCount) + ",";
+            returnData += "\"text_documents\":" + String(textCount) + ",";
+            returnData += "\"mp3_files\":" + String(mp3Count) + "}";
+        }
+        folder.close();
+    }
+    root.close();
+
+    returnData += "]}";
+    return returnData;
+}
+
+int volumeLevel = 14;
+
+/**
+ * @brief Get the status of the audio playback for the web API.
+ *
+ * @return String JSON object containing playback status.
+ */
+String getPlaybackStatus() {
+    String jsonResponse = "{";
+    jsonResponse += "\"audio_file_playing\":\"" + filename + "\",";
+    jsonResponse += "\"volume\":" + String(volumeLevel) + ",";
+    jsonResponse += "\"total_time\":" + String(audio.getTotalPlayingTime()) + ",";
+    jsonResponse += "\"current_position\":" + String(audio.getAudioCurrentTime()) + ",";
+    jsonResponse += "}";
+    return jsonResponse;
+}
+
+String queued = "";
+
 void setup() {
     Serial.begin(115200);
     Serial.println("History Phone Starting...");
@@ -277,7 +342,7 @@ void setup() {
     indexContentRoot(SD_MMC);
 
     audio.setPinout(I2S_BCLK, I2S_LRC, I2S_DOUT);
-    audio.setVolume(14); // 0...21
+    audio.setVolume(volumeLevel); // 0...21
     audio.forceMono(true);
 
     // Init Wifi
@@ -293,21 +358,49 @@ void setup() {
 
     if (initWiFi()) {
         server.on("/api/current", HTTP_GET, [](AsyncWebServerRequest *request) {
+            Serial.println("Current Year Requested");
             request->send(200, "text/plain", String(dialedNumber));
         });
 
+        server.on("/api/queue", HTTP_POST, [](AsyncWebServerRequest *request) {
+            Serial.println("Queue Pushed");
+            if (request->hasParam("queue", true)) {
+                AsyncWebParameter* p = request->getParam("queue", true);
+                queued = p->value();
+                Serial.println("Received Queued data: " + queued);
+
+                // Respond with a success message
+                request->send(200, "application/json", "{\"status\":\"success\"}");
+            } else {
+                // Respond with an error if the parameter is missing
+                request->send(400, "application/json", "{\"error\":\"Missing 'volume' parameter\"}");
+            }
+        });
+
+        server.on("/api/onhook", HTTP_GET, [](AsyncWebServerRequest *request) {
+            Serial.println("Current onhook setting Requested");
+            request->send(200, "text/plain", String(onHook));
+        });
+
         server.on("/api/years", HTTP_GET, [](AsyncWebServerRequest *request) {
+            Serial.println("Years Requested");
             String yearsJson = getYearsInJson(SD_MMC);
             request->send(200, "application/json", yearsJson);
         });
 
-        server.on("/api/update-volume", HTTP_POST, [](AsyncWebServerRequest *request) {
-            if (request->hasParam("volume", true)) { // Check if the POST body contains the "years" parameter
-                AsyncWebParameter* p = request->getParam("volume", true); // Get the parameter
-                String updatedVolume = p->value(); // Extract the value of the "years" parameter
-                Serial.println("Received years data: " + updatedVolume);
+        server.on("/api/status", HTTP_GET, [](AsyncWebServerRequest *request) {
+            Serial.println("Current status Requested");
+            request->send(200, "text/plain", getPlaybackStatus());
+        });
 
-                int volumeLevel = updatedVolume.toInt();
+        server.on("/api/volume", HTTP_POST, [](AsyncWebServerRequest *request) {
+            Serial.println("Volume Pushed");
+            if (request->hasParam("volume", true)) { // Check if the POST body contains the "volume" parameter
+                AsyncWebParameter* p = request->getParam("volume", true); // Get the parameter
+                String updatedVolume = p->value(); // Extract the value of the "volume" parameter
+                Serial.println("Received volume data: " + updatedVolume);
+
+                volumeLevel = updatedVolume.toInt();
                 audio.setVolume(volumeLevel);
 
                 // Respond with a success message
@@ -320,9 +413,11 @@ void setup() {
 
         // Route for root / web page
         server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
+            Serial.println("Index Called");
             request->send(SD_MMC, "/index.html", "text/html", false, processor);
         });
-        server.serveStatic("/", SD_MMC, "/web/");
+        server.serveStatic("/content/", SD_MMC, "/content/").setCacheControl("public, max-age=86400");
+        server.serveStatic("/", SD_MMC, "/web/").setCacheControl("public, max-age=86400");
         server.begin();
 
         if (!MDNS.begin("phone")) {
@@ -330,61 +425,6 @@ void setup() {
         }
     }
 }
-
-String getYearsInJson(fs::FS &fs) {
-    String returnData = "{\"folders\":[";
-    File root = SD.open("/content/"); // Open the directory
-    bool firstFolder = true;
-
-    while (true) {
-        File folder = root.openNextFile();
-        if (!folder) break; // No more files/folders
-
-        if (folder.isDirectory()) {
-            if (!firstFolder) {
-                returnData += ",";
-            }
-            firstFolder = false;
-
-            String folderName = folder.name();
-            int photoCount = 0, textCount = 0, mp3Count = 0;
-
-            File subFile;
-            while ((subFile = folder.openNextFile())) {
-                String fileName = subFile.name();
-                if (fileName.endsWith(".jpg") || fileName.endsWith(".png")) {
-                    photoCount++;
-                } else if (fileName.endsWith(".txt")) {
-                    textCount++;
-                } else if (fileName.endsWith(".mp3")) {
-                    mp3Count++;
-                }
-                subFile.close();
-            }
-
-            returnData += "{\"year\":\"" + folderName + "\",";
-            returnData += "\"photos\":" + String(photoCount) + ",";
-            returnData += "\"text_documents\":" + String(textCount) + ",";
-            returnData += "\"mp3_files\":" + String(mp3Count) + "}";
-        }
-        folder.close();
-    }
-
-    returnData += "]}";
-    return returnData;
-}
-
-// String getYearsInJson() {
-//     String returnData = "{\"years\":[";
-//     for (int i = 0; i < content.size(); i++) {
-//         returnData += String(content[i]);
-//         if (i < content.size() - 1) {
-//             returnData += ",";
-//         }
-//     }
-//     returnData += "]}";
-//     return returnData;
-// }
 
 /**
  * @brief Find the closest folder to the number dialed. We use the index of the
@@ -417,6 +457,7 @@ boolean readingsReady = false;
 void loop() {
     // Take one reading per loop iteration to avoid blocking
     inputsMux.channel(7); // Hook switch on channel 7
+    delayMicroseconds(10); // Allow MUX to settle
     hookReadings[readingIndex] = inputsMux.read();
     readingIndex++;
 
@@ -439,7 +480,7 @@ void loop() {
         hookState = !hookState; // Invert if needed based on your hardware
     }
 
-    delay(3);
+    delay(2);
     // Serial.println("Hook State: " + String(hookState));
 
     // If readings aren't ready yet, just run audio loop and return
@@ -472,13 +513,34 @@ void loop() {
         playing = false;
         dialedNumber = 0;
         audio.stopSong();
+        filename = "";
     }
 
     // Off-hook state: handle dialing and tone
     if (!onHook && !busy && !playing) {
+        if (queued != "") {
+            // queued value will be something like 'mp3_1921_0'
+            Serial.println("Processing queued value: " + queued);
+            int firstUnderscore = queued.indexOf('_');
+            int secondUnderscore = queued.indexOf('_', firstUnderscore + 1);
+            if (firstUnderscore != -1 && secondUnderscore != -1) {
+                String folderStr = queued.substring(firstUnderscore + 1, secondUnderscore);
+                int folderNum = folderStr.toInt();
+                String fileStr = queued.substring(secondUnderscore + 1);
+                Serial.println("Playing queued folder: " + folderStr + ", file: " + fileStr);
+
+                playing = true;
+                String filePathString = "/content/" + folderStr + "/" + fileStr + ".mp3";
+                Serial.println("Playing: " + filePathString);
+                audio.connecttoFS(SD_MMC, filePathString.c_str());
+                filename = filePathString;
+            }
+        }
+
         // Keep dial tone playing
         if (!audio.isRunning()) {
             audio.connecttoFS(SD_MMC, "/content/tone.mp3");
+            filename = "/content/tone.mp3";
         }
 
         // Check for dial pulses
@@ -502,10 +564,12 @@ void loop() {
                     String filePathString = "/content/" + String(closest) + "/" + randomFile;
                     Serial.println("Playing: " + filePathString);
                     audio.connecttoFS(SD_MMC, filePathString.c_str());
+                    filename = filePathString;
                 } else {
                     // Invalid number - play busy signal
                     busy = true;
                     audio.connecttoFS(SD_MMC, "/content/busy.mp3");
+                    filename = "/content/busy.mp3";
                 }
             }
         } else {
@@ -513,6 +577,7 @@ void loop() {
             if (millis() - lastReadTime > 7500) {
                 busy = true;
                 audio.connecttoFS(SD_MMC, "/content/busy.mp3");
+                filename = "/content/busy.mp3";
             }
         }
     }
@@ -520,6 +585,7 @@ void loop() {
     // Keep busy signal looping
     if (!onHook && busy && !audio.isRunning()) {
         audio.connecttoFS(SD_MMC, "/content/busy.mp3");
+        filename = "/content/busy.mp3";
     }
 
     // After audio clip finishes, play off-hook tone
@@ -527,6 +593,7 @@ void loop() {
         playing = false;
         busy = true;
         audio.connecttoFS(SD_MMC, "/content/off-hook.mp3");
+        filename = "/content/off-hook.mp3";
     }
 
     audio.loop();

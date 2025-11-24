@@ -15,14 +15,15 @@ export default function Sidebar({ passedEvents, onEventSelect }: SidebarProps) {
         const newVolume = parseInt(event.target.value, 10);
         setVolume(newVolume);
 
+        const params = "volume=" + newVolume;
         try {
             // Make an AJAX call to update the volume on the server
-            const response = await fetch('/api/update-volume', {
+            const response = await fetch('/api/volume', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
+                    'Content-Type': 'application/x-www-form-urlencoded',
                 },
-                body: JSON.stringify({ volume: newVolume }),
+                body: params,
             });
 
             if (!response.ok) {
@@ -49,7 +50,7 @@ export default function Sidebar({ passedEvents, onEventSelect }: SidebarProps) {
             <div style={{ position: 'absolute', bottom: '8px', display: 'flex', justifyContent: 'center', width: '100%'}}>
                 {/* Volume controls */}
                 <h3 style={{ paddingRight: '12px' }}>Volume</h3>
-                <input type="range" min="0" max="21" value='14' />
+                <input type="range" min="0" max="21" value={volume} onChange={handleVolumeChange}/>
             </div>
         </div>
     )

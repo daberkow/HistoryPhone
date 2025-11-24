@@ -4,7 +4,7 @@ import * as React from "react"
 import styles from "./page.module.css"
 import SideBar from "./sidebar/sidebar"
 import MainPage from "./window/mainpage"
-import { i_events, Data, Folder } from "./types"
+import { API_ENDPOINT, i_events, Data, Folder } from "./types"
 
 export default function Home() {
   const [events, setEvents] = React.useState<Data>({folders: []})
