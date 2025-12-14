@@ -32,3 +32,8 @@ hr {
     color: white;
 }
 
+.sidebar-item {
+    display: inline-block;
+    margin-top: 10px;
+    margin-left: 10%;
+}

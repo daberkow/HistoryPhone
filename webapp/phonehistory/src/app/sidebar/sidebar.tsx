@@ -9,7 +9,7 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ passedEvents, onEventSelect }: SidebarProps) {
-    const [volume, setVolume] = React.useState(14); // Initial volume value
+    const [volume, setVolume] = React.useState(8); // Initial volume value
 
     const handleVolumeChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const newVolume = parseInt(event.target.value, 10);
@@ -41,6 +41,7 @@ export default function Sidebar({ passedEvents, onEventSelect }: SidebarProps) {
             {
                 passedEvents.folders.map((singleEvent, index) => (
                     <div
+                        className='sidebar-item'
                         key={singleEvent.year || index}
                         onClick={() => onEventSelect(singleEvent)}>
                         <h3>{singleEvent.year}</h3>

@@ -47,6 +47,28 @@ export default function MainPage({ selectedEvent }: MainPageProps) {
         }
     }
 
+    const handleTextClicked = async (event: React.MouseEvent<HTMLDivElement>) => {
+        // When a text file is clicked, display it in the main window
+        const fileIndex = event.currentTarget.id.split('_')[2];
+        const textUrl = selectedEvent ? `./content/${selectedEvent.year}/${fileIndex}.txt` : "";
+        console.log("Text file clicked:", textUrl);
+
+        try {
+            const response = await fetch(textUrl);
+            const textContent = await response.text();
+            const playWindow = document.getElementById("playWindow");
+            if (playWindow) {
+                playWindow.innerHTML = `<div style="padding: 20px; text-align: left; white-space: pre-wrap;">${textContent}</div>`;
+            }
+        } catch (error) {
+            console.error('Error loading text file:', error);
+            const playWindow = document.getElementById("playWindow");
+            if (playWindow) {
+                playWindow.innerHTML = `<div style="padding: 20px;">Error loading text file</div>`;
+            }
+        }
+    }
+
     return (
         <div id="mainpage">
             <div id="playWindow">
@@ -73,7 +95,7 @@ export default function MainPage({ selectedEvent }: MainPageProps) {
                             </div>
                         ))}
                         {Array.from({ length: selectedEvent.text_documents }).map((_, i) => (
-                            <div className="textTile" key={i} id={"text_" + selectedEvent.year + "_" + i}><img src="./file.png"></img><p>Text Document {i + 1}</p></div>
+                            <div className="textTile" key={i} id={"text_" + selectedEvent.year + "_" + (i + 1)} onClick={handleTextClicked}><img src="./file.png"></img><p>Text Document {i + 1}</p></div>
                         ))}
                     </div>
                 ) : ("")}

@@ -281,7 +281,7 @@ String getYearsInJson(fs::FS &fs) {
     return returnData;
 }
 
-int volumeLevel = 14;
+int volumeLevel = 8;
 
 /**
  * @brief Get the status of the audio playback for the web API.
@@ -292,7 +292,7 @@ String getPlaybackStatus() {
     String jsonResponse = "{";
     jsonResponse += "\"audio_file_playing\":\"" + filename + "\",";
     jsonResponse += "\"volume\":" + String(volumeLevel) + ",";
-    jsonResponse += "\"total_time\":" + String(audio.getTotalPlayingTime()) + ",";
+    jsonResponse += "\"total_time\":" + String(audio.getAudioFileDuration()) + ",";
     jsonResponse += "\"current_position\":" + String(audio.getAudioCurrentTime()) + ",";
     jsonResponse += "}";
     return jsonResponse;
@@ -365,7 +365,7 @@ void setup() {
         server.on("/api/queue", HTTP_POST, [](AsyncWebServerRequest *request) {
             Serial.println("Queue Pushed");
             if (request->hasParam("queue", true)) {
-                AsyncWebParameter* p = request->getParam("queue", true);
+                const AsyncWebParameter* p = request->getParam("queue", true);
                 queued = p->value();
                 Serial.println("Received Queued data: " + queued);
 
@@ -396,7 +396,7 @@ void setup() {
         server.on("/api/volume", HTTP_POST, [](AsyncWebServerRequest *request) {
             Serial.println("Volume Pushed");
             if (request->hasParam("volume", true)) { // Check if the POST body contains the "volume" parameter
-                AsyncWebParameter* p = request->getParam("volume", true); // Get the parameter
+                const AsyncWebParameter* p = request->getParam("volume", true); // Get the parameter
                 String updatedVolume = p->value(); // Extract the value of the "volume" parameter
                 Serial.println("Received volume data: " + updatedVolume);
 
