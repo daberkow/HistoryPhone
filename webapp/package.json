@@ -5,13 +5,14 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "export": "next build",
     "start": "next start",
     "lint": "next lint"
   },
   "dependencies": {
     "bootstrap": "^5.3.3",
     "bootstrap-icons": "^1.11.3",
-    "next": "14.2.4",
+    "next": "14.2.35",
     "react": "^18",
     "react-bootstrap": "^2.10.3",
     "react-dom": "^18"
@@ -21,7 +22,7 @@
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "eslint": "^8",
-    "eslint-config-next": "14.2.4",
+    "eslint-config-next": "14.2.35",
     "typescript": "^5"
   }
 }

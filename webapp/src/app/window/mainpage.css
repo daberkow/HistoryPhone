@@ -1,0 +1,269 @@
+#mainpage {
+    width: calc(100% - 308px);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background-color: white;
+    left: 0px;
+    position: absolute;
+    text-align: center;
+}
+
+#playWindow {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid #38405F;
+    margin: 8px;
+    border-radius: 12px;
+    font-size: 32px;
+    overflow: hidden;
+    background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+}
+
+#playWindow img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+}
+
+#thumbnails {
+    height: 200px;
+    width: calc(100% - 16px);
+    display: block;
+    border: 2px solid #38405F;
+    margin: 8px;
+    border-radius: 12px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    white-space: nowrap;
+    padding: 8px;
+    background: #f8f9fa;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    scrollbar-color: #38405F transparent;
+}
+
+#thumbnails::-webkit-scrollbar {
+    height: 8px;
+}
+
+#thumbnails::-webkit-scrollbar-track {
+    background: rgba(56, 64, 95, 0.1);
+    border-radius: 4px;
+}
+
+#thumbnails::-webkit-scrollbar-thumb {
+    background: #38405F;
+    border-radius: 4px;
+}
+
+#thumbnails::-webkit-scrollbar-thumb:hover {
+    background: #4a5270;
+}
+
+#thumbnails > div {
+    padding: 4px;
+}
+
+.mp3Tile {
+    height: 168px;
+    width: 180px;
+    min-width: 180px;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    border: 2px solid #38405F;
+    border-radius: 12px;
+    margin: 4px 8px;
+    position: relative;
+    cursor: pointer;
+    background: linear-gradient(135deg, #fff 0%, #f8f9fa 100%);
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    box-shadow: 0 2px 8px rgba(56, 64, 95, 0.1);
+    padding: 8px;
+    vertical-align: top;
+}
+
+.mp3Tile:hover {
+    transform: translateY(-4px) scale(1.02);
+    box-shadow: 0 8px 16px rgba(56, 64, 95, 0.2);
+    border-color: #4a5270;
+}
+
+.mp3Tile:active {
+    transform: translateY(-2px) scale(0.98);
+    box-shadow: 0 4px 12px rgba(56, 64, 95, 0.15);
+    background: linear-gradient(135deg, #f0f1f3 0%, #e8e9eb 100%);
+}
+
+.mp3Tile img {
+    width: 100%;
+    height: 120px;
+    object-fit: contain;
+    object-position: center;
+    filter: invert(27%) sepia(16%) saturate(1042%) hue-rotate(191deg) brightness(92%) contrast(92%);
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    pointer-events: none;
+}
+
+.mp3Tile:hover img {
+    transform: scale(1.1);
+}
+
+.mp3Tile p {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: #38405F;
+    margin: 4px 0 0 0;
+    padding: 0;
+    text-align: center;
+    word-wrap: break-word;
+    width: 100%;
+    pointer-events: none;
+}
+
+.photoTile {
+    height: 168px;
+    width: 180px;
+    min-width: 180px;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    border: 2px solid #38405F;
+    border-radius: 12px;
+    margin: 4px 8px;
+    position: relative;
+    cursor: pointer;
+    background: #fff;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    box-shadow: 0 2px 8px rgba(56, 64, 95, 0.1);
+    overflow: hidden;
+    padding: 8px;
+    vertical-align: top;
+}
+
+.photoTile:hover {
+    transform: translateY(-4px) scale(1.02);
+    box-shadow: 0 8px 16px rgba(56, 64, 95, 0.2);
+    border-color: #4a5270;
+}
+
+.photoTile:active {
+    transform: translateY(-2px) scale(0.98);
+    box-shadow: 0 4px 12px rgba(56, 64, 95, 0.15);
+}
+
+.photoTile img {
+    width: 100%;
+    height: 120px;
+    object-fit: cover;
+    border-radius: 8px;
+    filter: none;
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    pointer-events: none;
+}
+
+.photoTile:hover img {
+    transform: scale(1.05);
+}
+
+.photoTile p {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: #38405F;
+    margin: 4px 0 0 0;
+    padding: 0;
+    text-align: center;
+    width: 100%;
+    pointer-events: none;
+}
+
+.textTile {
+    height: 168px;
+    width: 180px;
+    min-width: 180px;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    border: 2px solid #38405F;
+    border-radius: 12px;
+    margin: 4px 8px;
+    position: relative;
+    cursor: pointer;
+    background: linear-gradient(135deg, #fff 0%, #f8f9fa 100%);
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    box-shadow: 0 2px 8px rgba(56, 64, 95, 0.1);
+    padding: 8px;
+    vertical-align: top;
+}
+
+.textTile:hover {
+    transform: translateY(-4px) scale(1.02);
+    box-shadow: 0 8px 16px rgba(56, 64, 95, 0.2);
+    border-color: #4a5270;
+}
+
+.textTile:active {
+    transform: translateY(-2px) scale(0.98);
+    box-shadow: 0 4px 12px rgba(56, 64, 95, 0.15);
+    background: linear-gradient(135deg, #f0f1f3 0%, #e8e9eb 100%);
+}
+
+.textTile img {
+    width: 100%;
+    height: 120px;
+    object-fit: contain;
+    object-position: center;
+    filter: invert(27%) sepia(16%) saturate(1042%) hue-rotate(191deg) brightness(92%) contrast(92%);
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    pointer-events: none;
+}
+
+.textTile:hover img {
+    transform: scale(1.1);
+}
+
+.textTile p {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: #38405F;
+    margin: 4px 0 0 0;
+    padding: 0;
+    text-align: center;
+    word-wrap: break-word;
+    width: 100%;
+    pointer-events: none;
+}
+
+@media (max-width: 768px) {
+    #mainpage {
+        width: 100%;
+    }
+
+    .mp3Tile,
+    .photoTile,
+    .textTile {
+        width: 160px;
+        min-width: 160px;
+        height: 160px;
+    }
+
+    .photoTile img {
+        height: 110px;
+    }
+}

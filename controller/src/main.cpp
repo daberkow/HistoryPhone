@@ -339,6 +339,21 @@ void setup() {
     Serial.printf("Total space: %lluMB\n", SD_MMC.cardSize() / (1024 * 1024));
     Serial.printf("Used space: %lluMB\n", SD_MMC.usedBytes() / (1024 * 1024));
     // listDir(SD_MMC, "/", 0);
+
+    // Debug: List web directory contents
+    Serial.println("Checking /web directory:");
+    File webDir = SD_MMC.open("/web");
+    if (webDir && webDir.isDirectory()) {
+        File file = webDir.openNextFile();
+        while (file) {
+            Serial.print("  - ");
+            Serial.println(file.name());
+            file = webDir.openNextFile();
+        }
+    } else {
+        Serial.println("  /web directory not found!");
+    }
+
     indexContentRoot(SD_MMC);
 
     audio.setPinout(I2S_BCLK, I2S_LRC, I2S_DOUT);
@@ -413,11 +428,23 @@ void setup() {
 
         // Route for root / web page
         server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
-            Serial.println("Index Called");
-            request->send(SD_MMC, "/index.html", "text/html", false, processor);
+            Serial.println("Root path '/' requested");
+            request->send(SD_MMC, "/web/index.html", "text/html");
         });
+
+        // Serve content directory
         server.serveStatic("/content/", SD_MMC, "/content/").setCacheControl("public, max-age=86400");
+
+        // Serve Next.js static export assets
         server.serveStatic("/", SD_MMC, "/web/").setCacheControl("public, max-age=86400");
+
+        // Add a catch-all handler for debugging
+        server.onNotFound([](AsyncWebServerRequest *request) {
+            Serial.print("NOT FOUND: ");
+            Serial.println(request->url());
+            request->send(404, "text/plain", "Not found");
+        });
+
         server.begin();
 
         if (!MDNS.begin("phone")) {

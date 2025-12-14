@@ -44,11 +44,6 @@ rating:
 ## TODO:
 
 So much...
-
-- Webapp
-  - Photos
-  - Audio Controls
-  - Filter content
 - Photos overlayed on AI art?
 - Family tree generator?
 - Someway to record on device?

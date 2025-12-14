@@ -84,7 +84,7 @@ export default function MainPage({ selectedEvent }: MainPageProps) {
                 {selectedEvent ? (
                     <div>
                         {Array.from({ length: selectedEvent.mp3_files }).map((_, i) => (
-                            <div className="mp3Tile" key={i} id={"mp3_" + selectedEvent.year + "_" + i} onClick={handleAudioClicked}>
+                            <div className="mp3Tile" key={i} id={"mp3_" + selectedEvent.year + "_" + (i + 1)} onClick={handleAudioClicked}>
                                 <img src="./music-file.png"></img><p>MP3 File {i + 1}</p>
                             </div>
                         ))}

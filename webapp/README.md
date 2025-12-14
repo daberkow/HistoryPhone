@@ -20,6 +20,37 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
 
+## Creating a Static HTML Export
+
+To create a static HTML version of this site:
+
+1. **Build the static export:**
+   ```bash
+   npm run export
+   ```
+
+2. **The static files will be generated in the `out/` directory.**
+
+3. **To serve the static files locally for testing:**
+   ```bash
+   npx serve out
+   ```
+   Or use any static file server.
+
+### Important Notes for Static Export:
+
+- **API Routes**: Static export doesn't support Next.js API routes. Your API calls to `/api/*` will need to point directly to `http://192.168.4.1/api/*` in production.
+
+- **Development vs Production**:
+  - For development with API proxy: Uncomment the `rewrites()` function in `next.config.mjs`
+  - For static export: Keep the `rewrites()` commented out and use `output: 'export'`
+
+- **Content Files**: Make sure your `/content/*` files are either:
+  - Placed in the `public/content/` directory, OR
+  - Served from the device at `http://192.168.4.1/content/*`
+
+- **Images**: All images are set to `unoptimized: true` to work with static export.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:
