@@ -27,7 +27,7 @@ def format_year_spoken(year):
 
 def generate_menu_text(years):
     """Generate the menu text."""
-    intro = "Welcome to History Phone. Numbers available are: "
+    intro = "Welcome to History Phone. Dial 8 for Volume Control, Dial 9 for a random story, other available years to dial are: "
     spoken_years = [format_year_spoken(year) for year in years]
     year_list = ". ".join(spoken_years)
     return intro + year_list
