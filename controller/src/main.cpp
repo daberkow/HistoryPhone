@@ -71,6 +71,7 @@ int dialedNumber = 0;
 bool onHook = true;
 bool busy = false;
 bool playing = false;
+bool volumeSettingMode = false;
 unsigned long lastReadTime;
 
 void initSPIFFS() {
@@ -234,6 +235,33 @@ String selectRandomAudioFile() {
         }
     }
     return "";
+}
+
+/**
+ * @brief Select a random audio file from ALL content folders.
+ * Returns full path like "/content/1945/audio.mp3"
+ */
+String selectRandomAudioFromAllContent(fs::FS &fs, int &outSelectedYear) {
+    // First, pick a random year folder
+    if (content.size() == 0) {
+        outSelectedYear = 0;
+        return "";
+    }
+    int randomYearIndex = random(0, content.size());
+    int selectedYear = content[randomYearIndex];
+    outSelectedYear = selectedYear;
+
+    // Index that year's content
+    folderContent.clear();
+    indexPlayingContentsMetadata(fs, selectedYear);
+
+    // Select a random file from that year
+    String randomFile = selectRandomAudioFile();
+    if (randomFile == "") {
+        return "";
+    }
+
+    return "/content/" + String(selectedYear) + "/" + randomFile;
 }
 
 
@@ -524,6 +552,7 @@ void loop() {
         onHook = false;
         busy = false;
         playing = false;
+        volumeSettingMode = false;
         folderContent.clear();
         // audio.connecttoFS(SD_MMC, "/content/tone.mp3");
         dialedNumber = 0;
@@ -538,6 +567,7 @@ void loop() {
         onHook = true;
         busy = false;
         playing = false;
+        volumeSettingMode = false;
         dialedNumber = 0;
         audio.stopSong();
         filename = "";
@@ -552,7 +582,6 @@ void loop() {
             int secondUnderscore = queued.indexOf('_', firstUnderscore + 1);
             if (firstUnderscore != -1 && secondUnderscore != -1) {
                 String folderStr = queued.substring(firstUnderscore + 1, secondUnderscore);
-                int folderNum = folderStr.toInt();
                 String fileStr = queued.substring(secondUnderscore + 1);
                 Serial.println("Playing queued folder: " + folderStr + ", file: " + fileStr);
 
@@ -574,37 +603,125 @@ void loop() {
         dialer.loop();
         if (dialer.getFinalPulseCount() > 0) {
             Serial.println("Dial Reading: " + String(dialer.getFinalPulseCount()));
-            dialedNumber = (dialedNumber * 10) + dialer.getFinalPulseCount();
-            dialer.clearFinalPulseCount();
-            lastReadTime = millis();
 
-            // Check if we have a complete 4-digit number
-            if (dialedNumber > 999) {
-                int closest = findClosestFolder(dialedNumber);
-                Serial.println("Closest: " + String(closest));
+            // Handle volume setting mode
+            if (volumeSettingMode) {
+                int pulseCount = dialer.getFinalPulseCount();
+                dialedNumber = (dialedNumber * 10) + pulseCount;
+                dialer.clearFinalPulseCount();
+                lastReadTime = millis();
 
-                if (closest != -1) {
-                    // Valid number - play audio content
+                // Check if we have a valid volume (1-21)
+                if (dialedNumber >= 1 && dialedNumber <= 9) {
+                    // Single digit volume, wait a moment to see if they dial another digit
+                    // For now, apply immediately on next timeout or second digit
+                } else if (dialedNumber >= 10 && dialedNumber <= 21) {
+                    // Two digit volume
+                    Serial.println("Setting volume to: " + String(dialedNumber));
+                    volumeLevel = dialedNumber;
+                    audio.setVolume(volumeLevel);
                     playing = true;
-                    indexPlayingContentsMetadata(SD_MMC, closest);
-                    String randomFile = selectRandomAudioFile();
-                    String filePathString = "/content/" + String(closest) + "/" + randomFile;
-                    Serial.println("Playing: " + filePathString);
-                    audio.connecttoFS(SD_MMC, filePathString.c_str());
-                    filename = filePathString;
+                    volumeSettingMode = false;
+                    audio.connecttoFS(SD_MMC, ("/content/volume/" + String(dialedNumber) + ".mp3").c_str());
+                    filename = "/content/volume/" + String(dialedNumber) + ".mp3";
+                    dialedNumber = 0;
+                } else if (dialedNumber > 21) {
+                    // Invalid volume
+                    busy = true;
+                    volumeSettingMode = false;
+                    audio.connecttoFS(SD_MMC, "/content/busy.mp3");
+                    filename = "/content/busy.mp3";
+                    dialedNumber = 0;
+                }
+            }
+            // Check if first digit is 0 (pulse count of 10 on rotary phone)
+            else if (dialedNumber == 0 && dialer.getFinalPulseCount() == 10) {
+                Serial.println("Operator (0) dialed - playing menu");
+                playing = true;
+                audio.connecttoFS(SD_MMC, "/content/menu.mp3");
+                filename = "/content/menu.mp3";
+                dialer.clearFinalPulseCount();
+                lastReadTime = millis();
+            }
+            // Check if first digit is 8 - volume setting
+            else if (dialedNumber == 0 && dialer.getFinalPulseCount() == 8) {
+                Serial.println("Volume setting mode activated");
+                volumeSettingMode = true;
+                playing = true;
+                audio.connecttoFS(SD_MMC, "/content/volume_prompt.mp3");
+                filename = "/content/volume_prompt.mp3";
+                dialer.clearFinalPulseCount();
+                dialedNumber = 0;
+                lastReadTime = millis();
+            }
+            // Check if first digit is 9 - random audio
+            else if (dialedNumber == 0 && dialer.getFinalPulseCount() == 9) {
+                Serial.println("Playing random audio from all content");
+                playing = true;
+                int selectedYear = 0;
+                String randomPath = selectRandomAudioFromAllContent(SD_MMC, selectedYear);
+                if (randomPath != "") {
+                    dialedNumber = selectedYear; // Update dialedNumber for /api/current
+                    Serial.println("Playing: " + randomPath);
+                    audio.connecttoFS(SD_MMC, randomPath.c_str());
+                    filename = randomPath;
                 } else {
-                    // Invalid number - play busy signal
                     busy = true;
                     audio.connecttoFS(SD_MMC, "/content/busy.mp3");
                     filename = "/content/busy.mp3";
                 }
+                dialer.clearFinalPulseCount();
+                lastReadTime = millis();
+            }
+            else {
+                dialedNumber = (dialedNumber * 10) + dialer.getFinalPulseCount();
+                dialer.clearFinalPulseCount();
+                lastReadTime = millis();
+
+                // Check if we have a complete 4-digit number
+                if (dialedNumber > 999) {
+                    int closest = findClosestFolder(dialedNumber);
+                    Serial.println("Closest: " + String(closest));
+
+                    if (closest != -1) {
+                        // Valid number - play audio content
+                        playing = true;
+                        indexPlayingContentsMetadata(SD_MMC, closest);
+                        String randomFile = selectRandomAudioFile();
+                        String filePathString = "/content/" + String(closest) + "/" + randomFile;
+                        Serial.println("Playing: " + filePathString);
+                        audio.connecttoFS(SD_MMC, filePathString.c_str());
+                        filename = filePathString;
+                    } else {
+                        // Invalid number - play busy signal
+                        busy = true;
+                        audio.connecttoFS(SD_MMC, "/content/busy.mp3");
+                        filename = "/content/busy.mp3";
+                    }
+                }
             }
         } else {
-            // Timeout if no dialing activity for 5 seconds
-            if (millis() - lastReadTime > 7500) {
-                busy = true;
-                audio.connecttoFS(SD_MMC, "/content/busy.mp3");
-                filename = "/content/busy.mp3";
+            // Timeout handling - shorter timeout for volume mode (2 seconds vs 7.5 seconds)
+            unsigned long timeoutDuration = volumeSettingMode ? 2000 : 7500;
+
+            if (millis() - lastReadTime > timeoutDuration) {
+                // If in volume setting mode and have a single digit (1-9), apply it
+                if (volumeSettingMode && dialedNumber >= 1 && dialedNumber <= 9) {
+                    Serial.println("Setting volume to: " + String(dialedNumber));
+                    volumeLevel = dialedNumber;
+                    audio.setVolume(volumeLevel);
+                    playing = true;
+                    volumeSettingMode = false;
+                    audio.connecttoFS(SD_MMC, ("/content/volume/" + String(dialedNumber) + ".mp3").c_str());
+                    filename = "/content/volume/" + String(dialedNumber) + ".mp3";
+                    dialedNumber = 0;
+                } else {
+                    // Normal timeout - play busy signal
+                    busy = true;
+                    volumeSettingMode = false;
+                    audio.connecttoFS(SD_MMC, "/content/busy.mp3");
+                    filename = "/content/busy.mp3";
+                }
             }
         }
     }
@@ -617,10 +734,19 @@ void loop() {
 
     // After audio clip finishes, play off-hook tone
     if (!onHook && playing && !audio.isRunning()) {
-        playing = false;
-        busy = true;
-        audio.connecttoFS(SD_MMC, "/content/off-hook.mp3");
-        filename = "/content/off-hook.mp3";
+        // If we just finished the volume prompt, go back to dial tone and wait for input
+        if (volumeSettingMode) {
+            playing = false;
+            audio.connecttoFS(SD_MMC, "/content/tone.mp3");
+            filename = "/content/tone.mp3";
+            lastReadTime = millis(); // Reset timer so user has time to dial volume
+        } else {
+            // Normal playback finished - go to off-hook tone
+            playing = false;
+            busy = true;
+            audio.connecttoFS(SD_MMC, "/content/off-hook.mp3");
+            filename = "/content/off-hook.mp3";
+        }
     }
 
     audio.loop();
