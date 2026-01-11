@@ -175,7 +175,9 @@ void indexContentRoot(fs::FS &fs) {
         if (file.isDirectory()) {
             Serial.print("  DIR : ");
             Serial.println(file.name());
-            content.push_back(atoi(file.name()));
+            if (strcmp(file.name(), "volume") != 0) {
+                content.push_back(atoi(file.name()));
+            }
         }
         file = root.openNextFile();
     }
@@ -585,6 +587,8 @@ void loop() {
                 String fileStr = queued.substring(secondUnderscore + 1);
                 Serial.println("Playing queued folder: " + folderStr + ", file: " + fileStr);
 
+                dialedNumber = folderStr.toInt(); // Update dialedNumber for /api/current
+                queued = ""; // blank this so it doesn't replay next time
                 playing = true;
                 String filePathString = "/content/" + folderStr + "/" + fileStr + ".mp3";
                 Serial.println("Playing: " + filePathString);
@@ -728,6 +732,7 @@ void loop() {
 
     // Keep busy signal looping
     if (!onHook && busy && !audio.isRunning()) {
+        Serial.println("Replaying busy signal");
         audio.connecttoFS(SD_MMC, "/content/busy.mp3");
         filename = "/content/busy.mp3";
     }
@@ -742,6 +747,7 @@ void loop() {
             lastReadTime = millis(); // Reset timer so user has time to dial volume
         } else {
             // Normal playback finished - go to off-hook tone
+            Serial.println("Playback finished, returning to off-hook tone");
             playing = false;
             busy = true;
             audio.connecttoFS(SD_MMC, "/content/off-hook.mp3");
