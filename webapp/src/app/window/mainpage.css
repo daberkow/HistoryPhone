@@ -1,12 +1,14 @@
 #mainpage {
     width: calc(100% - 308px);
-    height: 100vh;
+    height: 100%;
     display: flex;
     flex-direction: column;
     background-color: white;
     left: 0px;
     position: absolute;
+    top: 0;
     text-align: center;
+    overflow: hidden;
 }
 
 #playWindow {
