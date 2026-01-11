@@ -10,7 +10,8 @@ from gtts import gTTS
 
 def get_year_folders():
     """Get all year folders (directories with numeric names)."""
-    current_dir = Path(__file__).parent
+    current_dir = Path.cwd()
+    print(f"Scanning directory: {current_dir}")
     year_folders = []
 
     for item in current_dir.iterdir():
