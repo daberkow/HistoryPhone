@@ -1,3 +1,4 @@
+// Default Libraries
 #include <Arduino.h>
 #include <vector>
 
@@ -20,6 +21,10 @@
 #include <ESPmDNS.h>
 #include "ESPAsyncWebServer.h"
 
+// IO
+#include "Mux.h"
+using namespace admux;
+
 const int BUFFER_SIZE = 1024;
 
 // **** IO Pins ****
@@ -29,19 +34,19 @@ const int BUFFER_SIZE = 1024;
 #define SD_MMC_D0  2  //Please do not modify it.
 
 //External Dac
-#define I2S_DOUT      25
-#define I2S_BCLK      26
-#define I2S_LRC       33
+#define I2S_DOUT            25
+#define I2S_BCLK            26
+#define I2S_LRC             33
 
-// IO
-#include "Mux.h"
-using namespace admux;
+// Aux Buttons and Mux
+#define AUX_BUTTONS_AND_MUX true
+#define NON_MUX_HOOK_SWITCH 20 // Change this pin as needed
 
 Mux mux(Pin(13, OUTPUT, PinType::Digital), Pinset(32, 12, 27));
-Mux inputsMux(Pin(35, INPUT, PinType::Digital), Pinset(5, 4, 0));
+Mux inputsMux(Pin(35, INPUT_PULLDOWN, PinType::Digital), Pinset(5, 4, 0));
 
-#define DIAL_1 19
-#define DIAL_2_In_MOTION 21
+#define DIAL_1              19
+#define DIAL_2_In_MOTION    21
 // #define HOOK_SWITCH 21 // Hook switch moved to input mux channel 7
 // **** IO Pins ****
 
@@ -138,20 +143,6 @@ bool initWiFi() {
     Serial.print("AP IP address: ");
     Serial.println(IP);
     return true;
-}
-
-// Replaces placeholder with LED state value
-String processor(const String& var) {
-    // if(var == "STATE") {
-    //   if(digitalRead(ledPin)) {
-    //     ledState = "ON";
-    //   }
-    //   else {
-    //     ledState = "OFF";
-    //   }
-    //   return ledState;
-    // }
-    return String();
 }
 
 std::vector<int> content;
@@ -334,11 +325,15 @@ void setup() {
     Serial.begin(115200);
     Serial.println("History Phone Starting...");
 
-    // Mux
-    pinMode(32, OUTPUT);
-    pinMode(12, OUTPUT);
-    pinMode(27, OUTPUT);
-    pinMode(13, OUTPUT);
+    if (AUX_BUTTONS_AND_MUX) {
+        // Mux
+        pinMode(32, OUTPUT);
+        pinMode(12, OUTPUT);
+        pinMode(27, OUTPUT);
+        pinMode(13, OUTPUT);
+    } else {
+        pinMode(NON_MUX_HOOK_SWITCH, INPUT_PULLUP);
+    }
     pinMode(DIAL_1, INPUT_PULLUP);
     pinMode(DIAL_2_In_MOTION, INPUT_PULLUP);
     // pinMode(HOOK_SWITCH, INPUT_PULLUP);
@@ -512,10 +507,15 @@ int readingIndex = 0;
 boolean readingsReady = false;
 
 void loop() {
-    // Take one reading per loop iteration to avoid blocking
-    inputsMux.channel(7); // Hook switch on channel 7
-    delayMicroseconds(10); // Allow MUX to settle
-    hookReadings[readingIndex] = inputsMux.read();
+    if (AUX_BUTTONS_AND_MUX) {
+        // Take one reading per loop iteration to avoid blocking
+        inputsMux.channel(7); // Hook switch on channel 7
+        delayMicroseconds(10); // Allow MUX to settle
+        hookReadings[readingIndex] = inputsMux.read();
+    } else {
+        // Direct read without MUX
+        hookReadings[readingIndex] = digitalRead(21); // Hook switch on GPIO 21
+    }
     readingIndex++;
 
     // Once we have 5 readings, calculate the average
@@ -549,8 +549,11 @@ void loop() {
     // Handle off-hook transition (handset picked up)
     if (onHook && hookState == LOW) {
         Serial.println("Off Hook");
-        mux.channel(2);
-        mux.write(1);
+        if (AUX_BUTTONS_AND_MUX) {
+            // Light up button 1 LED to indicate off-hook
+            mux.channel(2);
+            mux.write(1);
+        }
         onHook = false;
         busy = false;
         playing = false;
@@ -564,8 +567,10 @@ void loop() {
     // Handle on-hook transition (handset hung up)
     else if (!onHook && hookState != LOW) {
         Serial.println("On Hook");
-        mux.channel(2);
-        mux.write(0);
+        if (AUX_BUTTONS_AND_MUX) {
+            mux.channel(2);
+            mux.write(0);
+        }
         onHook = true;
         busy = false;
         playing = false;
