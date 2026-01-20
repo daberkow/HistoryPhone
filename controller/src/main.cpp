@@ -13,6 +13,7 @@
 #include "Audio.h"
 #include "SD_MMC.h"
 #include "FS.h"
+#include "ES8388.h"  // Local ES8388 driver
 
 #include "Dialer.h"
 
@@ -25,30 +26,23 @@
 #include "Mux.h"
 using namespace admux;
 
+// Board configuration - select board by building the appropriate PlatformIO environment
+// See platformio.ini for available environments (board_a1s_simple, board_a1s_mux, etc.)
+#include "boards.h"
+
 const int BUFFER_SIZE = 1024;
 
-// **** IO Pins ****
-// Digital I/O used
-#define SD_MMC_CMD 15 //Please do not modify it.
-#define SD_MMC_CLK 14 //Please do not modify it.
-#define SD_MMC_D0  2  //Please do not modify it.
+ES8388 es;
 
-//External Dac
-#define I2S_DOUT            25
-#define I2S_BCLK            26
-#define I2S_LRC             33
-
-// Aux Buttons and Mux
-#define AUX_BUTTONS_AND_MUX true
-#define NON_MUX_HOOK_SWITCH 20 // Change this pin as needed
-
+// MUX objects (only used when AUX_BUTTONS_AND_MUX is true)
+#if AUX_BUTTONS_AND_MUX
+Mux mux(Pin(MUX_SIG_PIN, OUTPUT, PinType::Digital), Pinset(MUX_S0_PIN, MUX_S1_PIN, MUX_S2_PIN));
+Mux inputsMux(Pin(INPUT_MUX_SIG_PIN, INPUT_PULLDOWN, PinType::Digital), Pinset(INPUT_MUX_S0_PIN, INPUT_MUX_S1_PIN, INPUT_MUX_S2_PIN));
+#else
+// Dummy declarations to avoid #if everywhere in the code - these won't be used
 Mux mux(Pin(13, OUTPUT, PinType::Digital), Pinset(32, 12, 27));
 Mux inputsMux(Pin(35, INPUT_PULLDOWN, PinType::Digital), Pinset(5, 4, 0));
-
-#define DIAL_1              19
-#define DIAL_2_In_MOTION    21
-// #define HOOK_SWITCH 21 // Hook switch moved to input mux channel 7
-// **** IO Pins ****
+#endif
 
 
 // Wifi vars
@@ -70,7 +64,7 @@ AsyncWebServer server(80);
 Audio audio;
 String filename = "";
 
-Dialer dialer(DIAL_1, DIAL_2_In_MOTION);
+Dialer dialer(DIAL_1, DIAL_2_IN_MOTION);
 
 int dialedNumber = 0;
 bool onHook = true;
@@ -325,17 +319,17 @@ void setup() {
     Serial.begin(115200);
     Serial.println("History Phone Starting...");
 
-    if (AUX_BUTTONS_AND_MUX) {
-        // Mux
-        pinMode(32, OUTPUT);
-        pinMode(12, OUTPUT);
-        pinMode(27, OUTPUT);
-        pinMode(13, OUTPUT);
-    } else {
-        pinMode(NON_MUX_HOOK_SWITCH, INPUT_PULLUP);
-    }
+    #if AUX_BUTTONS_AND_MUX
+        // MUX control pins
+        pinMode(MUX_S0_PIN, OUTPUT);
+        pinMode(MUX_S1_PIN, OUTPUT);
+        pinMode(MUX_S2_PIN, OUTPUT);
+        pinMode(MUX_SIG_PIN, OUTPUT);
+    #else
+        pinMode(HOOK_SWITCH_PIN, INPUT_PULLUP);
+    #endif
     pinMode(DIAL_1, INPUT_PULLUP);
-    pinMode(DIAL_2_In_MOTION, INPUT_PULLUP);
+    pinMode(DIAL_2_IN_MOTION, INPUT_PULLUP);
     // pinMode(HOOK_SWITCH, INPUT_PULLUP);
     SD_MMC.setPins(SD_MMC_CLK, SD_MMC_CMD, SD_MMC_D0);
 
@@ -381,9 +375,23 @@ void setup() {
 
     indexContentRoot(SD_MMC);
 
-    audio.setPinout(I2S_BCLK, I2S_LRC, I2S_DOUT);
+    // Initialize ES8388 codec via I2C
+    if (es.begin(I2C_SDA, I2C_SCL)) {
+        Serial.println("ES8388 codec initialized");
+        es.SetVolumeSpeaker(80);     // Speaker volume 0-100
+        es.SetVolumeHeadphone(80);        // Headphone volume 0-100
+        // es.volume(ES8388::ES_MAIN, 80);   // Main DAC volume
+    } else {
+        Serial.println("ES8388 codec initialization failed!");
+    }
+
+    // Enable amplifier
+    // pinMode(GPIO_PA_EN, OUTPUT);
+    // digitalWrite(GPIO_PA_EN, HIGH);
+
+    audio.setPinout(I2S_BCLK, I2S_LRC, I2S_DOUT, I2S_MCLK);
     audio.setVolume(volumeLevel); // 0...21
-    audio.forceMono(true);
+    // audio.forceMono(true);
 
     // Init Wifi
     // Load values saved in SPIFFS
@@ -507,15 +515,15 @@ int readingIndex = 0;
 boolean readingsReady = false;
 
 void loop() {
-    if (AUX_BUTTONS_AND_MUX) {
+    #if AUX_BUTTONS_AND_MUX
         // Take one reading per loop iteration to avoid blocking
         inputsMux.channel(7); // Hook switch on channel 7
         delayMicroseconds(10); // Allow MUX to settle
         hookReadings[readingIndex] = inputsMux.read();
-    } else {
+    #else
         // Direct read without MUX
-        hookReadings[readingIndex] = digitalRead(21); // Hook switch on GPIO 21
-    }
+        hookReadings[readingIndex] = digitalRead(HOOK_SWITCH_PIN);
+    #endif
     readingIndex++;
 
     // Once we have 5 readings, calculate the average
@@ -549,11 +557,11 @@ void loop() {
     // Handle off-hook transition (handset picked up)
     if (onHook && hookState == LOW) {
         Serial.println("Off Hook");
-        if (AUX_BUTTONS_AND_MUX) {
+        #if AUX_BUTTONS_AND_MUX
             // Light up button 1 LED to indicate off-hook
             mux.channel(2);
             mux.write(1);
-        }
+        #endif
         onHook = false;
         busy = false;
         playing = false;
@@ -567,10 +575,10 @@ void loop() {
     // Handle on-hook transition (handset hung up)
     else if (!onHook && hookState != LOW) {
         Serial.println("On Hook");
-        if (AUX_BUTTONS_AND_MUX) {
+        #if AUX_BUTTONS_AND_MUX
             mux.channel(2);
             mux.write(0);
-        }
+        #endif
         onHook = true;
         busy = false;
         playing = false;
