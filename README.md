@@ -1,6 +1,6 @@
 # HistoryPhone
 
-An interactive family history experience that transforms a vintage rotary phone into a storytelling device. Dial a year, and the phone plays recorded family stories from that time period. Photos and documents are simultaneously displayed on a companion web interface accessed via tablet or smartphone.
+An interactive family history experience that transforms a vintage rotary phone into a storytelling device. Dial a year, and the phone plays recorded family stories from that time period. Photos and documents are simultaneously displayed on a companion web interface accessed via tablet or smartphone. When a year is dialed, the code looks +/- 10 years to see if a story exists in that date range, if not plays a busy signal. There are a few special dial codes: 0=Operator menu, 8=Volume, 9=Random file.
 
 ## Features
 
@@ -15,7 +15,7 @@ An interactive family history experience that transforms a vintage rotary phone 
 ## Hardware Requirements
 
 - **ESP32 Development Board**: ESP32 CAM Board or similar (4MB Flash minimum, 8MB PSRAM recommended)
-  - Tested with: [ESP32 CAM Board](https://www.amazon.com/dp/B0CJJHXD1W), and later a ESP32-Audio-Kit Audio Development Board (https://www.amazon.com/dp/B0B63KZ6C1)
+  - Tested with: [ESP32 CAM Board](https://www.amazon.com/dp/B0CJJHXD1W), and later a ESP32-Audio-Kit Audio Development Board (https://www.amazon.com/dp/B0B63KZ6C1), the ESP32-Audio-Kit works well but has terrible docs, https://github.com/trombik/esp-adf-component-ai-thinker-esp32-a1s helps
   - Dual-core 32-bit microprocessor up to 240 MHz
   - WiFi and Bluetooth 4.2 (LE) support
 - **Rotary Phone**: Vintage rotary phone with working dial mechanism
