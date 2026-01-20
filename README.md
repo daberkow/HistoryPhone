@@ -15,7 +15,7 @@ An interactive family history experience that transforms a vintage rotary phone 
 ## Hardware Requirements
 
 - **ESP32 Development Board**: ESP32 CAM Board or similar (4MB Flash minimum, 8MB PSRAM recommended)
-  - Tested with: [ESP32 CAM Board](https://www.amazon.com/dp/B0CJJHXD1W)
+  - Tested with: [ESP32 CAM Board](https://www.amazon.com/dp/B0CJJHXD1W), and later a ESP32-Audio-Kit Audio Development Board (https://www.amazon.com/dp/B0B63KZ6C1)
   - Dual-core 32-bit microprocessor up to 240 MHz
   - WiFi and Bluetooth 4.2 (LE) support
 - **Rotary Phone**: Vintage rotary phone with working dial mechanism
@@ -320,7 +320,7 @@ Set debug level in `platformio.ini`:
 
 ## Future Ideas
 
-- Photos overlayed on AI-generated period artwork
+- Photos overlaid on AI-generated period artwork
 - Family tree generator integration
 - On-device recording capability
 - Support for phone buttons and indicator lights
