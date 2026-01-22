@@ -2,6 +2,8 @@
 
 An interactive family history experience that transforms a vintage rotary phone into a storytelling device. Dial a year, and the phone plays recorded family stories from that time period. Photos and documents are simultaneously displayed on a companion web interface accessed via tablet or smartphone. When a year is dialed, the code looks +/- 10 years to see if a story exists in that date range, if not plays a busy signal. There are a few special dial codes: 0=Operator menu, 8=Volume, 9=Random file.
 
+[Blog Post about project, with photos.](https://buildingtents.com/2026/01/22/history-phone/)
+
 ## Features
 
 - **Rotary Phone Interface**: Dial any configured year to hear family stories
@@ -255,7 +257,9 @@ PhoneHistory/
 
 ## Wiring
 
-*TODO: Add detailed wiring diagram*
+### The Rotary Dial
+
+There are two pairs of wires that come off the rotary. The first opens once the dial moves at all, this pair goes from a closed circuit to open. That's when you start tracking the rotary. Next the second pair will pulse every time it passes a digit. The flow for reading this is once the movement starts, clear a counter and start counting pulses. It's shockingly and happily simple.
 
 Basic connections needed:
 - **Rotary Dial**: Connect to GPIO pins for pulse counting
