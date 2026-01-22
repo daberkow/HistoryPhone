@@ -26,9 +26,15 @@ export default function Home() {
 
   const fetchEvents = async (): Promise<Data> => {
     const res = await fetch('/api/years')
-    const data = await res.json()
-    console.log(data)
-    return data
+    const data: Data = await res.json()
+
+    // Filter out "volume" and sort years ascending
+    const filteredAndSorted = data.folders
+      .filter(folder => folder.year !== "volume")
+      .sort((a, b) => parseInt(a.year) - parseInt(b.year))
+
+    console.log({ folders: filteredAndSorted })
+    return { folders: filteredAndSorted }
   }
 
   const handleEventSelect = (event: Folder) => {
